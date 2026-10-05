@@ -1,0 +1,28 @@
+# J1 clock at 2 ppqn (Clock Ratio x2, the default): 250 ms pulses = 120 BPM,
+# B2 turns blue (locked); 125 ms pulses = 240 BPM doubles the clock out;
+# J2 resets. Clock gone -> back to free-run.
+pot 1 0
+pot 2 0
+pot 3 0
+pot 4 0.5
+pot 6 0.5
+wait 3000
+clock 1 250
+wait 2500
+expect led b2 blue
+mark
+wait 2000
+expect edges 7 > 6
+expect edges 7 < 10
+expect rms > 0.01
+clock 1 125
+wait 2000
+mark
+wait 2000
+expect edges 7 > 13
+pulse 2
+wait 300
+expect alive
+clock 1 0
+wait 3000
+expect led b1 green

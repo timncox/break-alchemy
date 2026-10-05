@@ -18,19 +18,13 @@ BUILD   = ../build/test
 
 .PHONY: test clean
 
-test: $(BUILD)/test_readout $(BUILD)/test_clock_adapter $(BUILD)/test_versio_alloc \
+test: $(BUILD)/test_clock_adapter $(BUILD)/test_versio_alloc \
       $(BUILD)/test_dj_filter $(BUILD)/test_break $(BUILD)/test_ring_stall
-	./$(BUILD)/test_readout
 	./$(BUILD)/test_clock_adapter
 	./$(BUILD)/test_versio_alloc
 	./$(BUILD)/test_dj_filter
 	./$(BUILD)/test_break
 	./$(BUILD)/test_ring_stall
-
-# The 1U OLED's knob readout (shared by copy across the family).
-$(BUILD)/test_readout: test_readout.c ../src/readout.c
-	@mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) $^ -o $@
 
 $(BUILD)/test_clock_adapter: test_clock_adapter.c ../src/clock_adapter.c \
                              ../src/vendor/smack_core.c
@@ -50,7 +44,8 @@ $(BUILD)/test_dj_filter: test_dj_filter.c ../src/dj_filter.h
 
 # break-alchemy: the card reader, the Amen / rune rules, and the engine
 # playing a loaded break -- through break_engine.c, the unit the firmware builds.
-$(BUILD)/test_break: test_break.c ../src/break_engine.c ../src/ecto_card.c ../src/versio_alloc.c
+$(BUILD)/test_break: test_break.c ../src/break_engine.c ../src/ecto_card.c ../src/versio_alloc.c \
+                     ../src/clock_adapter.c
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) $^ -o $@ -lm
 

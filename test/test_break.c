@@ -14,6 +14,7 @@
 #include "../src/ecto_card.h"
 #include "../src/break_engine.h"
 #include "../src/versio_alloc.h"
+#include "../src/clock_adapter.h"
 #include "../src/vendor/smack_core.h"
 
 static int g_pass = 0;
@@ -276,8 +277,63 @@ static void test_engine(void)
     smack_destroy(s);
 }
 
+/* The emulator's card (tools/make_test_card.py) must parse here too, so a
+ * generator / reader disagreement shows up natively, not as a silent emu. */
+static void test_emu_card(void)
+{
+    static const char *names[] = {"bank1/0.0", "bank1/1.0", "bank1/2.0", "bank2/0.0"};
+    static uint8_t b[1 << 16];
+    for (int i = 0; i < 4; i++)
+    {
+        char p[128];
+        snprintf(p, sizeof p, "../emu-card/%s.wav.info", names[i]);
+        FILE *f = fopen(p, "rb");
+        if (!f) { printf("  (no emu-card; run tools/make_test_card.py emu-card)\n"); return; }
+        const size_t n = fread(b, 1, sizeof b, f);
+        fclose(f);
+        ecto_info_t in;
+        CHECK(ecto_info_parse(b, n, &in) == 0);
+        snprintf(p, sizeof p, "../emu-card/%s.wav", names[i]);
+        f = fopen(p, "rb");
+        CHECK(f != NULL);
+        const size_t m = fread(b, 1, 512, f);
+        fseek(f, 0, SEEK_END);
+        const long fsz = ftell(f);
+        fclose(f);
+        ecto_wav_t w;
+        CHECK(ecto_wav_parse(b, m, &w) == 0);
+        /* pads + music fit the file exactly */
+        CHECK((long)ecto_music_offset(&w, &in) + (long)in.size + (long)(ecto_music_offset(&w, &in) - w.data_offset) == fsz);
+        ecto_grid_t g;
+        ecto_grid(&in, ecto_beats(ecto_info_frames(&in), ecto_info_rate(&in), in.bpm), &g);
+        CHECK(g.n >= in.n_slices / 2 && g.n <= in.n_slices * 2);
+        CHECK(g.flags[0] & ECTO_G_KICK);   /* every generated break opens on a kick */
+    }
+}
+
+/* Free-run ignores the clock ratio (it only interprets J1 pulses), and
+ * tempos above 150 survive x2 -- the adapter clamps free_bpm at 300, which
+ * a compensate-by-doubling approach ran into (170 played at 150). */
+static void test_clock(void)
+{
+    clock_adapter_t c;
+    clk_init(&c, 48000, 120.0f);
+    c.free_ignores_ratio = 1;
+    clk_set_ratio(&c, CLK_TICKS_2X);
+    clk_set_free_bpm(&c, 170.0f);
+    CHECK(fabsf(clk_bpm(&c) - 170.0f) < 0.5f);
+    clk_set_ratio(&c, CLK_TICKS_DIV2);
+    CHECK(fabsf(clk_bpm(&c) - 170.0f) < 0.5f);
+    clock_adapter_t d;                       /* Smack's behaviour is unchanged */
+    clk_init(&d, 48000, 120.0f);
+    clk_set_ratio(&d, CLK_TICKS_2X);
+    CHECK(fabsf(clk_bpm(&d) - 60.0f) < 0.5f);
+}
+
 int main(void)
 {
+    test_clock();
+    test_emu_card();
     test_info();
     test_wav();
     test_grid();

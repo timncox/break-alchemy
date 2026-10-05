@@ -10,9 +10,9 @@
  *
  *   node tools/hostlink-fs.mjs [-p /dev/cu.usbmodemXXXX] info
  *   node tools/hostlink-fs.mjs ls /
- *   node tools/hostlink-fs.mjs stat /alchemy/smack_alchemy.bin
+ *   node tools/hostlink-fs.mjs stat /alchemy/break_alchemy.bin
  *   node tools/hostlink-fs.mjs mkdir /alchemy
- *   node tools/hostlink-fs.mjs put build/smack_alchemy.bin /alchemy/smack_alchemy.bin [--overwrite]
+ *   node tools/hostlink-fs.mjs put build/break_alchemy.bin /alchemy/break_alchemy.bin [--overwrite]
  *   node tools/hostlink-fs.mjs get /alchemy/x.bin x.bin
  *   node tools/hostlink-fs.mjs rm /alchemy/x.bin
  *

@@ -1,0 +1,40 @@
+# SAMPLE picks among bank 1's three samples (the third has a LIST chunk
+# before its data -- the 44-byte-header trap); BANK (Shift, P3) moves to bank 2.
+# Free-running adopts each break's tempo, so J7's eighths prove which loaded:
+# 120 BPM = 8 per 2 s, 170 BPM = ~11, 100 BPM = ~7.
+pot 1 0
+pot 2 0
+pot 3 0
+pot 4 0.5
+pot 6 0.5
+wait 3000
+expect led b1 green
+pot 3 0.5                  # sample 2: 170 BPM mono, 32 slices
+wait 1500
+expect led b1 green
+mark
+wait 2000
+expect rms > 0.01
+expect edges 7 > 10        # 170 BPM
+pot 3 0.95                 # sample 3: the LIST-chunk WAV, 120 BPM
+wait 1500
+expect led b1 green
+mark
+wait 2000
+expect rms > 0.01
+expect edges 7 < 10        # back to 120
+expect edges 7 > 6
+press b3                   # Shift page
+wait 100
+pot 3 0                    # sweep through the stored BANK so the pot catches
+wait 200
+pot 3 0.99                 # BANK -> bank 2 (100 BPM)
+wait 300
+release b3
+wait 1500
+expect led b1 green
+mark
+wait 2000
+expect rms > 0.01
+expect edges 7 < 8
+expect finite

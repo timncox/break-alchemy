@@ -1,0 +1,27 @@
+# BREAK up with the card's rune 1 (retrigger only) and with rune 7 (all):
+# stays playing, finite, unclipped. Trig Out modes (Settings P2): Snare and
+# Random fire too.
+pot 1 0
+pot 2 0
+pot 3 0
+pot 4 0.5
+pot 5 0
+pot 6 0.5
+wait 3000
+pot 1 1                    # BREAK full
+wait 2000
+mark
+wait 2000
+expect rms > 0.005
+expect finite
+expect unclipped
+pot 5 0.99                 # GRIMOIRE rune 7: every effect
+pot 2 0.99                 # AMEN full: random phrases
+pot 4 0.1                  # AMEN RANDOM left
+wait 3000
+mark
+wait 2000
+expect rms > 0.005
+expect finite
+expect unclipped
+expect led b1 green

@@ -1,0 +1,21 @@
+# Break: boots, finds the card (tools/make_test_card.py -> emu-card), loads
+# bank 1 sample 1 and plays it; J7 clocks eighths, J8 fires on kick slices.
+# (`print rms` consumes the window, so every expect comes before a print.)
+pot 1 0
+pot 2 0
+pot 3 0
+pot 4 0.5
+pot 5 0
+pot 6 0.5
+wait 3000
+expect booted
+expect led b1 green        # playing a loaded break
+mark
+wait 2000
+expect rms > 0.01          # the break plays with nothing patched in
+expect edges 7 > 6         # clock out: 8 eighths in 2 s at 120 BPM
+expect edges 7 < 10
+expect edges 8 > 0         # trig out: kick slices (Settings default)
+expect finite
+expect unclipped
+print cv

@@ -45,6 +45,7 @@ static double free_fpt(const clock_adapter_t *c)
     double base = fpt_from_bpm(c->sample_rate,
                                c->free_bpm > 0.0f ? c->free_bpm : 120.0f);
     int    tpp  = c->ticks_per_pulse > 0 ? c->ticks_per_pulse : CLK_TICKS_1X;
+    if (c->free_ignores_ratio) return base;
     return base * ((double)CLK_TICKS_1X / (double)tpp);
 }
 
@@ -63,6 +64,7 @@ void clk_init(clock_adapter_t *c, int sample_rate, float free_bpm)
     c->iv_n            = 0;
     c->free_bpm        = free_bpm > 0 ? free_bpm : 120.0f;
     c->locked          = 0;
+    c->free_ignores_ratio = 0;
     /*
      * Announce the free-run clock as a running transport straight away.
      *

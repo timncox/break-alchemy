@@ -56,6 +56,9 @@ typedef struct {
     int      pending_start;    /* emit 0xFA before the next tick */
     int      tick_now;         /* a pulse landed: emit its tick, once */
     int      ticks_this_pulse; /* hard cap: never exceed ticks_per_pulse */
+    int      free_ignores_ratio; /* break-alchemy: 1 = the ratio only says
+                                    what a pulse is worth; free-run stays at
+                                    free_bpm. 0 (Smack) = ratio scales it. */
 } clock_adapter_t;
 
 void  clk_init(clock_adapter_t *c, int sample_rate, float free_bpm);

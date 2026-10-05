@@ -1,87 +1,61 @@
-# smack-alchemy
+# Break — Ectocore-style break mangling for the Alchemy Lab
 
-**Smack** — live loop capture + seeded per-slice glitch — for the
-[Hermetic Modular Alchemy Lab V2](https://hermeticmodular.com/modules/alchemy-lab),
-built on the [Alchemy SDK](https://github.com/hermetic-modular/alchemy-sdk).
+Firmware for the [Hermetic Modular Alchemy Lab V2](https://hermeticmodular.com/modules/alchemy-lab).
+It plays sliced breaks from an SD card prepared on **ectocore.rocks**
+(16 banks × 16 samples, with slices, kick/snare marks and a grimoire) and
+mangles them through **Smack**'s seeded per-slice glitch engine.
 
-Same C engine as [smack-versio](https://github.com/timncox/smack-versio),
-recompiled for six pots on two pages, three buttons, six CV jacks and 102
-LEDs. Records everything you play into a ring, grabs the last LENGTH steps
-on demand, cuts the loop into slices and runs a seeded pattern of effects
-across them.
+It is *inspired by* the infinitedigits Ectocore and reads its card format.
+It contains none of its code: `schollz/_core` is GPL-3.0, and this is a
+clean-room implementation from a format description
+([docs/ectocore-sd-format.md](docs/ectocore-sd-format.md)). MIT.
 
-**Status: v0.1.0 builds and passes its native suites. Nothing has been heard
-yet.** See `DESIGN.md` for the control map, what is verified and what is not.
+## Panel
 
-## Build
-
-Requires `arm-none-eabi-gcc`, `make`, `dfu-util`.
-
-```sh
-git clone --recurse-submodules <this repo>
-cd smack-alchemy
-make libdaisy        # once
-make                 # build/smack_alchemy.bin
-make test            # native suites, no hardware
+```
+PLAY                         SHIFT (hold B3)
+[P1 BREAK]   B1 [P2 AMEN]    [VOLUME]      [SEED]
+[P3 SAMPLE]  B2 [P4 RANDOM]  [BANK]        [PITCH RANGE]
+[P5 GRIMOIRE]B3 [P6 DJ FILT] [CLOCK RATIO] [TEMPO]
 ```
 
-## Flash
+| Control | Does |
+|---|---|
+| BREAK | how many slices carry an effect (squared curve) |
+| AMEN | CCW: straight · middle: loop a random sequence of 1–32 slices · full CW: random 3-slice phrases |
+| AMEN RANDOM | centre: off · left: jump, and carry on from there · right: jump, then snap back to the grid |
+| SAMPLE / BANK | pick among the samples / banks actually on the card |
+| GRIMOIRE | rune 1–7: which effects BREAK can use (from the card's `settings/grimoire`, else built-ins) |
+| DJ FILTER | LP left, HP right, open at centre |
+| VOLUME | 100 % at noon, then soft saturation |
+| CLOCK RATIO | what a J1 pulse is worth: /2 half note, =1 quarter, **x2 eighth (2 ppqn, default)** |
+| B1 | tap: re-roll · hold: stop / play |
+| B2 | tap: tap tempo · hold: punch (every slice retriggers) |
+| Settings (B2+B3) | P1 brightness · **P2 Trig Out** (kick / snare / transient / random) · P3-P4 presets · **P5 Evolve** (fresh pattern each pass) · page 2 = SD firmware picker |
 
-Front USB-C with the factory bootloader: hold B3 during the ~2 s boot
-window (rings spin a warm-white comet), the rings switch to a slow breathe,
-then:
+Jacks: **J1** clock in · **J2** reset · **J3** AMEN cv · **J4** BREAK cv · **J5** SAMPLE cv ·
+**J6** AMEN RANDOM cv · **J7** clock out (eighths) · **J8** trig out · **J9/J10** audio out.
 
-```sh
-make program-dfu
+LEDs: B1 green playing · amber loading · red no card / load failed · grey stopped ·
+white punching. B2 blue = locked to J1 · grey free-running (white flash per beat) · red = CPU > 80 %.
+
+## The card
+
+Export from ectocore.rocks and copy the folder's contents (or the folder
+itself) to a FAT32 card: `bank1/0.0.wav` + `bank1/0.0.wav.info`, … and
+`settings/grimoire/runeN/effectE-on`. `tools/make_test_card.py <dir>` writes
+a small synthetic card in the same layout.
+
+## Build, test, flash
+
+```
+make libdaisy            # once
+make                     # build/break_alchemy.bin
+make test                # native: card reader, Amen/runes, engine with a loaded break
+make program-live        # flash over HostLink
 ```
 
-or the [web programmer](https://hermeticmodular.com/program). Once this
-firmware is running on the front port, `make program-live` reboots and
-flashes without touching the module.
+Emulator (alchemy-lab, branch `emu-custom`): see `emu.mk`.
+`make -C <alchemy-lab>/emu test-custom FW_DIR=$PWD` runs `emu-tests/*.emu` against `emu-card/`.
 
-Bench setup (Hermetic's intdfu bootloader on the Seed's micro-USB): same
-gesture on the micro-USB port; build with `BENCH_USB=1` if you want HostLink
-there too.
-
-## Firmware on the SD card
-
-Put `.bin` files built for the Alchemy Lab bootloader in a folder named
-`alchemy` on a FAT32 card. Hold B2+B3 for two seconds, tap B1 to the
-Firmware page, pick a file with the top-left pot, then turn the top-right
-pot down and all the way up. It writes, verifies, and reboots into the
-chosen firmware.
-
-## The site
-
-`docs/index.html` is the operation manual, a single file meant for GitHub
-Pages from `main:/docs`. Its panel drawing is generated from the SDK's KiCad
-front-panel template by `tools/emit_panel_geometry.py`; run it with
-`--check` before publishing and `--write` after the template changes, and
-never hand-edit the coordinates. The repository URL the page links to is one
-constant at the top of the file.
-
-## Files on the card over USB
-
-`tools/hostlink-fs.mjs` speaks HostLink's filesystem block, so images reach
-the card without pulling it:
-
-```sh
-node tools/hostlink-fs.mjs info                       # mounted? FAT32? size
-node tools/hostlink-fs.mjs ls /alchemy
-node tools/hostlink-fs.mjs mkdir /alchemy
-node tools/hostlink-fs.mjs put build/smack_alchemy.bin /alchemy/smack_alchemy.bin --overwrite
-```
-
-The picker lists files in on-disk order, one dot each, so the order you
-upload them is the order the FILE pot walks.
-
-## Not a Hermetic Modular product
-
-Custom firmware. Hermetic Modular did not write, test or endorse it; ask
-here, not there.
-
-## License
-
-MIT (this firmware). The vendored engine is Tim Cox's; see the file headers.
-
-`src/usbd_ctlreq_uac.c` is STMicroelectronics' `usbd_ctlreq.c` from the STM32 USB Device Library (as shipped in libDaisy), changed only to allow three interfaces; it stays under ST's license, in `src/LICENSE-ST-USB.md`.
+Home preset slot **4**.

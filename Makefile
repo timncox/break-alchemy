@@ -1,23 +1,23 @@
 # =============================================================================
-# smack-alchemy — Smack for the Hermetic Modular Alchemy Lab V2
+# break-alchemy — Break, an Ectocore-style break mangler, for the Hermetic
+# Modular Alchemy Lab V2. Built on smack-alchemy's tree and engine.
 #
 # Standard Daisy workflow (libDaisy core Makefile underneath):
 #   make libdaisy       — build lib/libDaisy once after cloning
-#   make                — build firmware -> build/smack_alchemy.bin
+#   make                — build firmware -> build/break_alchemy.bin
 #   make program-dfu    — flash over USB (module in DFU mode first)
 #   make program-live   — reboot the running module over USB and flash it
 #   make test           — native test suites (no hardware)
 #   make clean          — remove the build tree
 #
-# Build flags:
-#   BENCH_USB=1   HostLink on the Seed's micro-USB (bench bootloader setup)
-#                 instead of the front USB-C. Rebuild without it before racking.
+# A worktree whose lib/ submodules are empty can build against another
+# checkout's: make ALCHEMY_DIR=<abs>/lib/alchemy-sdk LIBDAISY_DIR=<abs>/lib/libDaisy
 #
 # Default goal is libDaisy's `all` (a build). Nothing here flashes unless a
 # program-* target is named explicitly.
 # =============================================================================
 
-TARGET = smack_alchemy
+TARGET = break_alchemy
 
 # Alchemy Lab board revision: v1 | v2
 BOARD ?= v2
@@ -25,28 +25,23 @@ ifeq ($(filter $(BOARD),v1 v2),)
 $(error BOARD must be 'v1' or 'v2' (got '$(BOARD)'))
 endif
 
-ALCHEMY_DIR  = lib/alchemy-sdk
-LIBDAISY_DIR = lib/libDaisy
+ALCHEMY_DIR  ?= lib/alchemy-sdk
+LIBDAISY_DIR ?= lib/libDaisy
 
 # ── App sources ─────────────────────────────────────────────────────────────
 CPP_SOURCES = \
-    src/smack_alchemy.cpp \
-    src/picker.cpp \
-    src/launchpad.cpp \
-    src/screen.cpp \
-    src/usb_shared.cpp
+    src/break_alchemy.cpp \
+    src/card_loader.cpp \
+    src/picker.cpp
 
-# smack_core_alchemy.c #includes vendor/smack_core.c with calloc/free
-# redirected to SDRAM. Never list vendor/smack_core.c here as well —
-# that would define every engine symbol twice.
+# break_engine.c #includes vendor/smack_core.c with calloc/free redirected
+# to SDRAM. Never list vendor/smack_core.c here as well — that would define
+# every engine symbol twice.
 C_SOURCES = \
     src/clock_adapter.c \
     src/versio_alloc.c \
-    src/smack_core_alchemy.c \
-    src/readout.c \
-    src/usbh_hub_midi.c \
-    src/usb_audio.c \
-    src/usbd_ctlreq_uac.c
+    src/break_engine.c \
+    src/ecto_card.c
 
 # ── Alchemy SDK, compiled straight from the submodule ───────────────────────
 CPP_SOURCES += $(sort $(shell find $(ALCHEMY_DIR)/framework/src -name '*.cpp'))
@@ -62,13 +57,9 @@ ifeq ($(BOARD),v2)
 C_DEFS += -DALCHEMY_BOARD_V2
 endif
 
-SMACK_VERSION  := $(shell cat VERSION 2>/dev/null || echo 0.0.0)
-SMACK_GIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
-C_DEFS += -DSMACK_VERSION=\"$(SMACK_VERSION)\" -DSMACK_GIT_HASH=\"$(SMACK_GIT_HASH)\"
-
-ifeq ($(BENCH_USB),1)
-C_DEFS += -DSMACK_BENCH_USB
-endif
+BREAK_VERSION  := $(shell cat VERSION 2>/dev/null || echo 0.0.0)
+BREAK_GIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
+C_DEFS += -DBREAK_VERSION=\"$(BREAK_VERSION)\" -DBREAK_GIT_HASH=\"$(BREAK_GIT_HASH)\"
 
 # ── Daisy bootloader build (BOOT_SRAM) ──────────────────────────────────────
 # The STM32H750 has 128 KB of internal flash; this app plus the SDK is well
@@ -85,7 +76,7 @@ APP_TYPE = BOOT_SRAM
 # code places FatFS work buffers in `.axi_bss`, which its own script does not
 # define (see alchemy/storage/sd_card.h). Re-copy from the SDK and re-add the
 # section when the submodule moves.
-LDSCRIPT = src/smack_alchemy.lds
+LDSCRIPT = src/break_alchemy.lds
 
 # The Alchemy SDK requires C++17 (libDaisy's default is gnu++14).
 CPP_STANDARD = -std=gnu++17
@@ -117,9 +108,9 @@ endif
 # bin built at 39b6e63 still reported 3516bbb over HostLink. Retire that
 # object whenever HEAD moves, so a build after the final commit carries that
 # commit's hash.
-HASH_STAMP := $(BUILD_DIR)/.hash-$(SMACK_GIT_HASH)
+HASH_STAMP := $(BUILD_DIR)/.hash-$(BREAK_GIT_HASH)
 ifeq ($(wildcard $(HASH_STAMP)),)
-_HASH_GUARD := $(shell rm -f $(BUILD_DIR)/smack_alchemy.o $(BUILD_DIR)/smack_alchemy.d $(BUILD_DIR)/.hash-* 2>/dev/null; mkdir -p $(BUILD_DIR); touch $(HASH_STAMP))
+_HASH_GUARD := $(shell rm -f $(BUILD_DIR)/break_alchemy.o $(BUILD_DIR)/break_alchemy.d $(BUILD_DIR)/.hash-* 2>/dev/null; mkdir -p $(BUILD_DIR); touch $(HASH_STAMP))
 endif
 
 .PHONY: libdaisy

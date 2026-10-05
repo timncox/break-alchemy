@@ -1,0 +1,26 @@
+# B1 held: stop (silence, B1 grey), held again: play. Tap re-rolls and keeps
+# playing.
+pot 1 0
+pot 2 0
+pot 3 0
+pot 4 0.5
+pot 6 0.5
+wait 3000
+expect led b1 green
+hold b1 900
+wait 300
+expect led b1 grey
+mark
+wait 1000
+expect rms < 0.001         # stopped: silence
+expect edges 7 = 0         # and no clock out
+hold b1 900
+wait 300
+expect led b1 green
+mark
+wait 1000
+expect rms > 0.01
+tap b1                     # re-roll
+wait 500
+expect led b1 green
+expect alive
