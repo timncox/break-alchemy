@@ -330,8 +330,57 @@ static void test_clock(void)
     CHECK(fabsf(clk_bpm(&d) - 60.0f) < 0.5f);
 }
 
+/* The byte layouts schollz/_core's own reader test builds (test/bank_metadata/
+ * test_metadata.c @ 12d36c7), re-expressed here as vectors -- an independent
+ * check that this reader agrees with the original on the format, since the
+ * emu card was generated from the same spec this reader was. */
+static size_t upstream_fixture(uint8_t *b, unsigned slices, unsigned excess)
+{
+    memset(b, 0, 4096);
+    wr32(b, slices * 4096u);
+    wr32(b + 4, 170u | (1u << 13) | (1u << 16));     /* bpm 170, tempo_match, v1 */
+    wr16(b + 8, 96);
+    b[10] = (uint8_t)slices;
+    for (unsigned i = 0; i < slices; i++)
+    {
+        wr32(b + 11 + 4 * i, i * 4096u);
+        wr32(b + 11 + 4 * slices + 4 * i, (i + 1) * 4096u);
+    }
+    size_t pos = 11 + 9 * (size_t)slices;
+    wr16(b + pos, (uint16_t)excess); wr16(b + pos + 2, 2); wr16(b + pos + 4, 1);
+    pos += 6;
+    for (unsigned i = 0; i < excess + 3; i++, pos += 2) wr16(b + pos, (uint16_t)(17 + i));
+    return pos;
+}
+
+static void test_upstream_vectors(void)
+{
+    static uint8_t b[4096];
+    ecto_info_t in;
+    size_t n = upstream_fixture(b, 128, 20);
+    CHECK(ecto_info_parse(b, n, &in) == 0);
+    CHECK(in.bpm == 170 && in.version == 1 && in.tempo_match == 1 && in.n_slices == 128);
+    CHECK(in.n_trans[0] == 16);                       /* 20 kicks, 16 kept */
+    CHECK(in.trans[1][0] == 37 && in.trans[2][0] == 39);
+    CHECK(in.slice_start[127] == 127 * 4096 && in.slice_stop[127] == 128 * 4096);
+    n = upstream_fixture(b, 2, 0);
+    wr32(b + 4, 170u | (2u << 16));                   /* version 2: refused */
+    CHECK(ecto_info_parse(b, n, &in) != 0);
+    n = upstream_fixture(b, 2, 0);
+    wr32(b + 11 + 8, 0);                              /* stop[0] = 0: refused */
+    CHECK(ecto_info_parse(b, n, &in) != 0);
+    n = upstream_fixture(b, 2, 0);
+    wr16(b + 8, 1);                                   /* splice_trigger 1: refused */
+    CHECK(ecto_info_parse(b, n, &in) != 0);
+    n = upstream_fixture(b, 2, 0);
+    wr32(b + 4, 170u);                                /* version 0, exactly 11 + 9N */
+    CHECK(ecto_info_parse(b, 29, &in) == 0 && in.version == 0 && in.n_trans[0] == 0);
+    (void)n;
+}
+
 int main(void)
 {
+    test_upstream_vectors();
     test_clock();
     test_emu_card();
     test_info();

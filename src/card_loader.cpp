@@ -188,6 +188,9 @@ bool Begin(int bank, int slot, int16_t* dst, uint32_t cap_frames)
     if (f_open(&s_fil, p, FA_READ) != FR_OK) return fail("no wav");
     if (!read_at(0, 512, &d, &got)) return fail("wav read");
     if (ecto_wav_parse(d, got, &s_wav) != 0) return fail("wav header");
+    /* The WAV header is the authority on channels: frame maths and slice
+     * offsets follow it if the .info's stereo flag ever disagrees. */
+    s_ii.stereo = s_wav.channels == 2 ? 1 : 0;
 
     const uint32_t frames = ecto_info_frames(&s_ii);
     const uint32_t rate   = ecto_info_rate(&s_ii);

@@ -81,6 +81,8 @@ grimoire, SD streaming for samples longer than a slot.
 - Emulator (`emu-tests/`): boot → load → audio; J7 eighths at the break's
   tempo; J8 kick trigs; stop/play; sample + bank switching (proved by tempo);
   J1 lock at 120 and 240; BREAK/rune/Amen extremes stay finite and unclipped.
+- Upstream vectors: the `.info` layouts schollz/_core's own reader test builds
+  (test/bank_metadata/test_metadata.c @ 12d36c7) parse identically here.
 - **Not verified:** a real ectocore.rocks export (the test card is generated
   from the spec by the same hands that wrote the reader); hardware (SD timing,
   CPU with heavy effects, the STM DAC written from the audio callback).
