@@ -273,6 +273,10 @@ struct smack {
     float    trig_gain;          /* velocity gain, sqrt taper */
     int      trig_render;        /* per-frame: this frame renders the cell */
 
+    /* break-alchemy: 1 = the ring holds loaded samples, not a recording, so
+     * the recorder must never write to it. See BREAK-ALCHEMY PATCH below. */
+    int      rec_hold;
+
     /* Pattern geometry (shared by both lanes: same loop, same grid) */
     int      n_slices;
     double   slice_frames;
@@ -477,6 +481,13 @@ static void roll_lane(smack_t *s, smack_lane_t *ln) {
     }
 }
 
+/* BREAK-ALCHEMY PATCH (2 of 2 engine edits; the other is rec_hold).
+ * Called at the end of every roll, wherever the roll came from (reroll,
+ * a density or seed change, a load). break-alchemy uses it to restrict the
+ * rolled effects to the current grimoire rune and to rewrite the slice order
+ * as an Amen sequence, without forking roll_lane(). NULL = no-op. */
+void (*smack_post_roll_hook)(struct smack *s) = 0;
+
 static void roll_pattern(smack_t *s) {
     /* Once audio exists, its captured/resized clock span is authoritative.
      * This also keeps a take fixed if Loop Length is edited while recording. */
@@ -497,6 +508,7 @@ static void roll_pattern(smack_t *s) {
      * determines both lanes, and lane 0 matches what stereo mode rolls */
     roll_lane(s, &s->lane[0]);
     if (s->chan_mode) roll_lane(s, &s->lane[1]);
+    if (smack_post_roll_hook) smack_post_roll_hook(s);
     s->edit_rev++;
 }
 
@@ -1700,6 +1712,7 @@ static double pad_rate_frames(const smack_t *s) {
 
 static void record_ring_frame(smack_t *s, int16_t l, int16_t r,
                               uint64_t global_frame) {
+    if (s->rec_hold) return;   /* BREAK-ALCHEMY PATCH: ring = loaded samples */
     if (s->state == SMACK_LOOPING) {
         uint32_t protected_start = s->loop_available > 0
                                  ? s->loop_history_start : s->loop_start;
