@@ -1,0 +1,36 @@
+# Real card: BANK (Shift P3) walks from the Amen (bank 1) into the Think
+# breaks (banks 2-9, 170 BPM) and the CMX Vibes (banks 10-11, 170 BPM).
+pot 1 0
+pot 2 0
+pot 3 0
+pot 4 0.5
+pot 6 0.5
+wait 3500
+expect led b1 green
+press b3
+wait 100
+pot 3 0                     # sweep through the stored BANK so the pot catches
+wait 200
+pot 3 0.15                  # 11 banks: 0.15 = bank 2 (Think)
+wait 300
+release b3
+wait 2000
+expect led b1 green
+mark
+wait 3000
+expect rms > 0.01
+expect edges 7 > 15         # 170 BPM: 17 eighths in 3 s
+expect edges 7 < 19
+press b3
+wait 100
+pot 3 0.99                  # last bank: CMX Vibes
+wait 300
+release b3
+wait 2000
+expect led b1 green
+mark
+wait 3000
+expect rms > 0.01
+expect edges 7 > 15
+expect edges 7 < 19
+expect finite

@@ -378,8 +378,46 @@ static void test_upstream_vectors(void)
     (void)n;
 }
 
+/* The real card, if there is one (never committed): every break on it must
+ * parse and fit its file exactly. BREAK_REAL_CARD overrides the default path. */
+static void test_real_card(void)
+{
+    const char *card = getenv("BREAK_REAL_CARD");
+    char def[512];
+    if (!card) { snprintf(def, sizeof def, "%s/Music/Break Card", getenv("HOME") ? getenv("HOME") : ""); card = def; }
+    static uint8_t b[1 << 16];
+    int n = 0;
+    for (int bank = 1; bank <= ECTO_BANKS; bank++)
+        for (int slot = 0; slot < ECTO_SLOTS; slot++)
+        {
+            char p[640];
+            snprintf(p, sizeof p, "%s/bank%d/%d.0.wav.info", card, bank, slot);
+            FILE *f = fopen(p, "rb");
+            if (!f) continue;
+            const size_t len = fread(b, 1, sizeof b, f);
+            fclose(f);
+            ecto_info_t in;
+            CHECK(ecto_info_parse(b, len, &in) == 0);
+            snprintf(p, sizeof p, "%s/bank%d/%d.0.wav", card, bank, slot);
+            f = fopen(p, "rb");
+            CHECK(f != NULL);
+            const size_t m = fread(b, 1, 512, f);
+            fseek(f, 0, SEEK_END);
+            const long fsz = ftell(f);
+            fclose(f);
+            ecto_wav_t w;
+            CHECK(ecto_wav_parse(b, m, &w) == 0);
+            const long pad = (long)(ecto_music_offset(&w, &in) - w.data_offset);
+            CHECK((long)w.data_offset + 2 * pad + (long)in.size == fsz);
+            n++;
+        }
+    if (n) printf("  real card %s: %d breaks parse\n", card, n);
+    else   printf("  (no real card at %s; skipped)\n", card);
+}
+
 int main(void)
 {
+    test_real_card();
     test_upstream_vectors();
     test_clock();
     test_emu_card();

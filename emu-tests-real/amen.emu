@@ -1,0 +1,36 @@
+# Real card (~/Music/Break Card, built by tools/make_card.py from Tim's own
+# sample folders; never committed). Bank 1 = the Amen x4. Slot tempos:
+# 0 = 100, 1 = 165, 2 = 107, 3 = 107 BPM, so J7's eighths say which loaded.
+pot 1 0
+pot 2 0
+pot 3 0
+pot 4 0.5
+pot 5 0
+pot 6 0.5
+wait 3500
+expect booted
+expect led b1 green
+mark
+wait 3000
+expect rms > 0.01
+expect edges 7 > 8          # 100 BPM: 10 eighths in 3 s
+expect edges 7 < 12
+expect edges 8 > 0          # kick trigs from the detected Amen kicks
+expect finite
+expect unclipped
+pot 3 0.3                   # slot 1: 165 BPM
+wait 2000
+expect led b1 green
+mark
+wait 3000
+expect rms > 0.01
+expect edges 7 > 14         # ~16.5 eighths in 3 s
+expect edges 7 < 19
+pot 3 0.6                   # slot 2: 107 BPM
+wait 2000
+mark
+wait 3000
+expect rms > 0.01
+expect edges 7 > 9          # ~10.7
+expect edges 7 < 13
+expect edges 8 > 0

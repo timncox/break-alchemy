@@ -61,6 +61,8 @@ make program-live        # flash over HostLink
 ```
 
 Emulator (alchemy-lab, branch `emu-custom`): see `emu.mk`.
+`make test-real` runs `emu-tests-real/*.emu` against your own card
+(`~/Music/Break Card`, or `BREAK_REAL_CARD=…`); skipped when there is none.
 `make -C <alchemy-lab>/emu test-custom FW_DIR=$PWD` runs `emu-tests/*.emu` against `emu-card/`.
 
 Home preset slot **4**.

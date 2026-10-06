@@ -128,6 +128,11 @@ program-live: all
 	node $(ALCHEMY_DIR)/tools/hostlink-cli/hostlink.mjs reboot bootloader
 	dfu-util -w -a 0 -s $(FLASH_ADDRESS):leave -D $(BUILD_DIR)/$(TARGET_BIN) -d ,0483:$(USBPID)
 
+# ── Emulator tests on a real card (your own breaks; never committed) ────────
+.PHONY: test-real
+test-real:
+	tools/test-real-card.sh
+
 # ── Native tests ────────────────────────────────────────────────────────────
 .PHONY: test
 test:

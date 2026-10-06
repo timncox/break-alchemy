@@ -1,0 +1,32 @@
+# Real card: every rune at BREAK full, AMEN full and AMEN RANDOM both ways on
+# the Amen -- stays playing, finite and unclipped on real recordings.
+pot 2 0
+pot 3 0
+pot 4 0.5
+pot 6 0.5
+wait 3500
+pot 1 1
+pot 5 0
+wait 2000
+mark
+wait 2000
+expect rms > 0.005
+expect unclipped
+pot 5 0.5                   # rune 4
+pot 2 0.5                   # AMEN: a sequence
+pot 4 0.1                   # AMEN RANDOM: wander
+wait 2500
+mark
+wait 2000
+expect rms > 0.005
+expect unclipped
+pot 5 0.99                  # rune 7: everything
+pot 2 1                     # AMEN full: random phrases
+pot 4 0.9                   # AMEN RANDOM: snap back
+wait 2500
+mark
+wait 2000
+expect rms > 0.005
+expect finite
+expect unclipped
+expect led b1 green
