@@ -24,6 +24,7 @@ struct Loaded
     uint32_t    frames;       /* stereo frames written */
     int         beats;
     int         bpm;
+    uint32_t    rate;         /* the source's sample rate (44.1 k x oversampling) */
     ecto_grid_t grid;
 };
 

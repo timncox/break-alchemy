@@ -210,6 +210,7 @@ bool Begin(int bank, int slot, int16_t* dst, uint32_t cap_frames)
     s_res.slot   = slot;
     s_res.beats  = beats;
     s_res.bpm    = s_ii.bpm;
+    s_res.rate   = rate;
     s_res.frames = 0;
     ecto_grid(&s_ii, beats, &s_res.grid);
 

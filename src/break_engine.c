@@ -78,6 +78,11 @@ static int g_slot = -1;
 
 void brk_init(struct smack *s)
 {
+    /* a fresh engine starts from defaults (the globals outlive an engine) */
+    g_slot = -1;
+    g_amen = 0.0f;
+    g_jump = 0.0f;
+    g_rune = 0xFFFFFFFEu;
     s->rec_hold = 1;
     s->monitor  = 0;
     s->ab       = 1;
@@ -93,7 +98,10 @@ int16_t *brk_slot_ptr(struct smack *s, int slot)
 
 int brk_playing_slot(const struct smack *s) { (void)s; return g_slot; }
 
-void brk_commit(struct smack *s, int slot, uint32_t frames, int beats, int slice_res_idx)
+void brk_set_keep_pitch(struct smack *s, int on) { s->stretch = on ? 1 : 0; }
+
+void brk_commit(struct smack *s, int slot, uint32_t frames, int beats, int slice_res_idx,
+                uint32_t source_rate)
 {
     if (frames < 256u) return;
     if (frames > SLOT_FRAMES) frames = SLOT_FRAMES;
@@ -117,6 +125,8 @@ void brk_commit(struct smack *s, int slot, uint32_t frames, int beats, int slice
     s->slice_res_idx        = slice_res_idx;
     s->play_pos = fmod(ticks_in, (double)ticks) * s->loop_frames_per_tick;
     if (s->play_pos >= (double)frames) s->play_pos = 0.0;
+    /* source frames per output frame at the break's own speed */
+    s->stretch_inc = source_rate ? (double)source_rate / (double)SMACK_SR : 1.0;
     s->state = SMACK_LOOPING;
     g_slot   = slot;
     roll_pattern(s);

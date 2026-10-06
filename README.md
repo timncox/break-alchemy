@@ -31,7 +31,7 @@ PLAY                         SHIFT (hold B3)
 | CLOCK RATIO | what a J1 pulse is worth: /2 half note, =1 quarter, **x2 eighth (2 ppqn, default)** |
 | B1 | tap: re-roll · hold: stop / play |
 | B2 | tap: tap tempo · hold: punch (every slice retriggers) |
-| Settings (B2+B3) | P1 brightness · **P2 Trig Out** (kick / snare / transient / random) · P3-P4 presets · **P5 Evolve** (fresh pattern each pass) · page 2 = SD firmware picker |
+| Settings (B2+B3) | P1 brightness · **P2 Trig Out** (kick / snare / transient / random) · P3-P4 presets · **P5 Evolve** (fresh pattern each pass) · **P6 Tempo**: pitch follows tempo, or keep pitch · page 2 = SD firmware picker |
 
 Jacks: **J1** clock in · **J2** reset · **J3** AMEN cv · **J4** BREAK cv · **J5** SAMPLE cv ·
 **J6** AMEN RANDOM cv · **J7** clock out (eighths) · **J8** trig out · **J9/J10** audio out.

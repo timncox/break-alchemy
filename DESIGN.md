@@ -28,7 +28,7 @@ J1 clock ─► clock_adapter ─► MIDI ticks ─► smack_core ◄───�
 | `src/break_alchemy.cpp` | the app: pages, buttons, jacks, LEDs, autosave |
 | `src/vendor/smack_core.*` | the engine, from smack-alchemy, with **two** marked `BREAK-ALCHEMY PATCH` edits |
 
-## The two engine edits
+## The three engine edits
 
 1. `rec_hold` — `record_ring_frame` returns at once. The recorder normally
    runs forever and only avoids the *playing* loop; it would overwrite the
@@ -37,6 +37,12 @@ J1 clock ─► clock_adapter ─► MIDI ticks ─► smack_core ◄───�
    roll can come from anywhere (reroll, a density or seed change, a commit),
    so restricting effects to a rune or imposing the Amen order outside the
    engine would be undone by the next internal roll.
+
+3. Keep pitch (`stretch`, `stretch_inc`) — in `render_lane`, the read
+   position inside a slice moves at the source's own rate instead of the
+   clock-scaled one, while the grid and its edge fades stay in clock time.
+   Faster than the break: each slice is cut at the next grid line. Slower:
+   it runs out and fades to a gap. Settings P6 picks it.
 
 Upstream (`~/tim-os/smack`) doesn't have them; if Smack ever wants a "play a
 file" mode they are the whole change.

@@ -88,7 +88,7 @@ static clock_adapter_t CLK;
 static host_api_v1_t   HOST;
 
 /* control -> audio */
-struct Commit { int slot; uint32_t frames; int beats; int res; };
+struct Commit { int slot; uint32_t frames; int beats; int res; uint32_t rate; };
 static volatile bool  G_COMMIT_PENDING = false;
 static Commit         g_commit;
 static volatile bool  G_RUN      = true;     /* play / stop */
@@ -139,6 +139,7 @@ static const char* const kRuneLabels[ECTO_RUNES] = {
 static const char* const kRatioLabels[3] = {"/2", "=1", "x2"};
 static const char* const kTrigLabels[4]  = {"Kick", "Snare", "Transient", "Random"};
 static const char* const kEvolveLabels[2] = {"Off", "Each pass"};
+static const char* const kPitchLabels[2]  = {"Follows tempo", "Keep pitch"};
 
 static VirtualKnob kn_break = VirtualKnob(kPotTopLeft, "Break")
     .Linear(0.f, 100.f).Ident("break").Unit("%").Ring(Level(kColBreak));
@@ -224,6 +225,7 @@ static hostlink::Host host(presets, "break_alchemy", "Break", BREAK_VERSION, BRE
 static SmackExtras   extras;
 static SelectorHandle trig_mode;
 static SelectorHandle evolve_mode;
+static SelectorHandle pitch_mode;
 
 static float host_get_bpm(void)
 {
@@ -324,7 +326,7 @@ static void card_frame(uint32_t now)
     {
         const card::Loaded& r = card::Result();
         g_grid[g_load_dst] = r.grid;
-        g_commit = {g_load_dst, r.frames, r.beats, r.grid.slice_res_idx};
+        g_commit = {g_load_dst, r.frames, r.beats, r.grid.slice_res_idx, r.rate};
         G_COMMIT_PENDING = true;
         g_have_bank = g_load_bank;
         g_have_sample = g_load_sample;
@@ -518,6 +520,11 @@ static void OnFrame(void)
     }
 
     G_TRIG_MODE = (int)trig_mode.Value();
+    {
+        static int applied = -1;
+        const int pm = (int)pitch_mode.Value();
+        if (pm != applied) { applied = pm; brk_set_keep_pitch(S, pm); }
+    }
 
     /* EVOLVE: a fresh roll each loop pass while anything random is up. */
     {
@@ -650,7 +657,7 @@ static void AudioCallback(daisy::AudioHandle::InputBuffer  in,
 
     if (G_COMMIT_PENDING)
     {
-        brk_commit(S, g_commit.slot, g_commit.frames, g_commit.beats, g_commit.res);
+        brk_commit(S, g_commit.slot, g_commit.frames, g_commit.beats, g_commit.res, g_commit.rate);
         G_COMMIT_PENDING = false;
     }
     static bool ran = true;
@@ -795,6 +802,15 @@ int main(void)
         .Help("**Each pass**: while BREAK, AMEN RANDOM or full AMEN is up, "
               "roll a fresh pattern every time the loop comes round, so the "
               "effects come and go. **Off**: one pattern until you re-roll.");
+
+    pitch_mode = settings.Page(kSettingsMain).Pot(5)
+        .Selector(kPitchLabels).Default(0)
+        .Ident("pitch.mode").Name("Tempo")
+        .Help("What a tempo change does to the break. **Follows tempo**: it "
+              "speeds up and slows down like a turntable, so the pitch moves "
+              "with it. **Keep pitch**: every slice plays at its own speed from "
+              "its place on the grid, so the drums sound as recorded; faster "
+              "cuts each slice short, slower leaves a short gap after it.");
 
     /* CV: J3-J6 modulate, J7/J8 are outputs. */
     cv_matrix.Jack(0).To(kn_amen);

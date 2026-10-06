@@ -35,7 +35,13 @@ uint32_t brk_slot_frames(void);
 /* Make slot `slot` (frames long, `beats` beats, cut at the engine's slice
  * index slice_res_idx 0..3) the playing loop. The playhead keeps its place
  * in the bar. Then rolls. AUDIO THREAD. */
-void brk_commit(struct smack *s, int slot, uint32_t frames, int beats, int slice_res_idx);
+void brk_commit(struct smack *s, int slot, uint32_t frames, int beats, int slice_res_idx,
+                uint32_t source_rate);
+
+/* Tempo changes: 0 = varispeed (pitch follows tempo, like a turntable),
+ * 1 = keep pitch (each slice plays at the source's own speed from its grid
+ * start: cut short when faster, a faded gap when slower). Any thread. */
+void brk_set_keep_pitch(struct smack *s, int on);
 
 /* Which slot plays, -1 = none yet. */
 int  brk_playing_slot(const struct smack *s);

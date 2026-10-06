@@ -276,6 +276,11 @@ struct smack {
     /* break-alchemy: 1 = the ring holds loaded samples, not a recording, so
      * the recorder must never write to it. See BREAK-ALCHEMY PATCH below. */
     int      rec_hold;
+    /* BREAK-ALCHEMY PATCH (3): keep pitch. 1 = each slice plays at the
+     * source's own speed from its grid start (stretch_inc source frames per
+     * output frame) instead of varispeeding with the clock. */
+    int      stretch;
+    double   stretch_inc;
 
     /* Pattern geometry (shared by both lanes: same loop, same grid) */
     int      n_slices;
@@ -481,7 +486,7 @@ static void roll_lane(smack_t *s, smack_lane_t *ln) {
     }
 }
 
-/* BREAK-ALCHEMY PATCH (2 of 2 engine edits; the other is rec_hold).
+/* BREAK-ALCHEMY PATCH (2 of 3 engine edits; the others are rec_hold and keep-pitch).
  * Called at the end of every roll, wherever the roll came from (reroll,
  * a density or seed change, a load). break-alchemy uses it to restrict the
  * rolled effects to the current grimoire rune and to rewrite the slice order
@@ -1023,6 +1028,23 @@ static void render_lane(smack_t *s, smack_lane_t *ln, int ch, int side, float *l
     }
     float g = 1.0f, gl = 1.0f, gr = 1.0f;
     float gedge = 1.0f;   /* slice-edge + loop fades, shared by wet AND dry */
+    /* BREAK-ALCHEMY PATCH (3): keep pitch. The grid (and its edge fades) stays
+     * in clock time, pclk; the read position inside the slice moves at the
+     * source's own rate. Faster than the break: the slice is cut at the next
+     * grid line. Slower: it runs out and fades to a gap. */
+    const double pclk = p;
+    int stretched = 0;
+    if (s->stretch && s->stretch_inc > 0.0) {
+        double inc = loop_playback_increment(s);
+        if (inc > 0.0) {
+            double pn = p / inc * s->stretch_inc;
+            double t = sf - pn;
+            if (t <= 0.0) { gedge = 0.0f; pn = sf - 1.0; }
+            else if (t < SMACK_EDGE_FADE) gedge *= (float)(t / SMACK_EDGE_FADE);
+            p = pn;
+            stretched = 1;
+        }
+    }
     int f = SMACK_FX_NONE, fp = 0;
     int fp2 = -1, fmix = -1;  /* per-effect depth / per-slice mix, -1 dflt */
     double src;
@@ -1035,7 +1057,7 @@ static void render_lane(smack_t *s, smack_lane_t *ln, int ch, int side, float *l
 
     if (!use_pattern) {
         /* clean, original order (pad-play still repeats its cell here) */
-        src = s->trig_render ? ((double)oslice * sf + p) : s->play_pos;
+        src = (s->trig_render || stretched) ? ((double)oslice * sf + p) : s->play_pos;
     } else {
         int sslice = ln->order[oslice];
         f  = ln->fx[oslice];
@@ -1285,8 +1307,8 @@ static void render_lane(smack_t *s, smack_lane_t *ln, int ch, int side, float *l
         }
 
         /* slice-edge fade masks discontinuities from reorder/fx */
-        if (p < SMACK_EDGE_FADE) gedge *= (float)(p / SMACK_EDGE_FADE);
-        double tail = sf - p;
+        if (pclk < SMACK_EDGE_FADE) gedge *= (float)(pclk / SMACK_EDGE_FADE);
+        double tail = sf - pclk;
         if (tail < SMACK_EDGE_FADE) gedge *= (float)(tail / SMACK_EDGE_FADE);
     }
 

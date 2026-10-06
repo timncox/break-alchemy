@@ -201,7 +201,7 @@ static void test_engine(void)
     smack_set_param(s, "fx_density", "0");
     const uint8_t start = 0xFA;
     smack_on_midi(s, &start, 1, 3);
-    brk_commit(s, 0, frames, 4, 1);
+    brk_commit(s, 0, frames, 4, 1, 44100);
     CHECK(brk_playing_slot(s) == 0 && brk_n_slices(s) == 16);
 
     int16_t in[256] = {0}, out[256];
@@ -256,7 +256,7 @@ static void test_engine(void)
 
     /* commit slot 1 (2 beats): the bar position carries over */
     for (uint32_t i = 0; i < 44100; i++) { q[2 * i] = 1000; q[2 * i + 1] = 1000; }
-    brk_commit(s, 1, 44100, 2, 1);
+    brk_commit(s, 1, 44100, 2, 1, 44100);
     CHECK(brk_playing_slot(s) == 1 && brk_n_slices(s) == 8);
     for (int b = 0; b < 100; b++)
     {
@@ -415,8 +415,70 @@ static void test_real_card(void)
     else   printf("  (no real card at %s; skipped)\n", card);
 }
 
+/* Keep pitch: a ramp as the break, so each output sample says which source
+ * frame was read. At 2x the break's tempo, varispeed reads ~2 x 0.919 source
+ * frames per output frame; keep-pitch reads 0.919 (the break's own speed).
+ * At half tempo keep-pitch runs out of each slice and leaves a gap. */
+static double read_rate(smack_t *s, double bpm, int keep, int *silent, int *total)
+{
+    brk_set_keep_pitch(s, keep);
+    double acc = 0, fpt = SMACK_SR * 60.0 / (bpm * 24.0);
+    int16_t in[256] = {0}, out[256];
+    for (int b = 0; b < 1500; b++) { feed_ticks(s, &acc, 128, fpt); smack_process(s, in, out, 128); }   /* the engine's tempo estimate settles over seconds */
+    double sum = 0; int n = 0;
+    *silent = *total = 0;
+    for (int b = 0; b < 300; b++)
+    {
+        feed_ticks(s, &acc, 128, fpt);
+        smack_process(s, in, out, 128);
+        for (int i = 1; i < 128; i++)
+        {
+            const int d = out[2 * i] - out[2 * i - 2];
+            if (d >= 0 && d < 8 && out[2 * i] != 0) { sum += d; n++; }   /* inside a slice, no wrap or gap */
+            (*total)++;
+            if (out[2 * i] == 0) (*silent)++;
+        }
+    }
+    return n ? sum / n : 0.0;
+}
+
+static void test_keep_pitch(void)
+{
+    static uint8_t pool[VERSIO_POOL_BYTES];
+    versio_alloc_init(pool, sizeof pool);
+    host_api_v1_t host; memset(&host, 0, sizeof host);
+    host.api_version = 1; host.sample_rate = SMACK_SR; host.frames_per_block = 128; host.get_bpm = host_bpm;
+    smack_t *s = smack_create(&host);
+    CHECK(s && !versio_alloc_failed());
+    brk_init(s);
+    brk_set_amen(0.0f, 0.0f);
+    brk_set_rune(0);
+    smack_set_param(s, "fx_density", "0");
+    /* 4 beats at 120 BPM, 44.1 k: a ramp 1..30000 repeating per slice-ish */
+    const uint32_t frames = 88200;
+    int16_t *p = brk_slot_ptr(s, 0);
+    for (uint32_t i = 0; i < frames; i++) { const int16_t v = (int16_t)(1 + i % 30000); p[2 * i] = v; p[2 * i + 1] = v; }
+    const uint8_t start = 0xFA;
+    smack_on_midi(s, &start, 1, 3);
+    brk_commit(s, 0, frames, 4, 1, 44100);
+    int sil, tot;
+    const double vari = read_rate(s, 240.0, 0, &sil, &tot);
+    const double keep = read_rate(s, 240.0, 1, &sil, &tot);
+    printf("  read rate at 2x tempo: follows tempo %.3f, keep pitch %.3f (break's own 0.919)\n", vari, keep);
+    CHECK(vari > 1.7 && vari < 2.0);
+    CHECK(keep > 0.85 && keep < 1.0);
+    const double slow = read_rate(s, 60.0, 1, &sil, &tot);
+    printf("  half tempo, keep pitch: read %.3f, %d%% silent\n", slow, 100 * sil / tot);
+    CHECK(slow > 0.85 && slow < 1.0);
+    CHECK(sil * 100 / tot > 35 && sil * 100 / tot < 60);   /* each slice then a gap */
+    read_rate(s, 60.0, 0, &sil, &tot);
+    CHECK(sil * 100 / tot < 5);                             /* varispeed: no gaps */
+    smack_destroy(s);
+}
+
 int main(void)
 {
+    test_keep_pitch();
     test_real_card();
     test_upstream_vectors();
     test_clock();
