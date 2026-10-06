@@ -101,7 +101,7 @@ def onsets(mono):
     for i in range(n):
         base = min(lL[max(0, i - 6): i]) if i else -9.0
         nxt = lL[i + 1] - (min(lL[max(0, i - 5): i + 1])) if i + 1 < n else 0
-        if (lL[i] - base > 0.6 and sl[i] > 0.05 * maxL and not nxt > lL[i] - base
+        if (lL[i] - base > 0.6 and sl[i] > 0.3 * maxL and not nxt > lL[i] - base
                 and (i - lastk) * hop > RATE * 0.1):
             out.append((max(0, i - 3) * hop, 0)); lastk = i
         hb = min(lH[max(0, i - 4): i]) if i else -9.0
@@ -109,7 +109,16 @@ def onsets(mono):
             if i + 1 < n and lH[i + 1] > lH[i]:
                 continue                                   # still rising: take the peak hop
             peak = max(highs[i: i + 3])
-            out.append((i * hop, 1 if peak > 0.25 * maxH else 2)); lasth = i
+            out.append((i * hop, 1 if peak > 0.35 * maxH else 2)); lasth = i
+    # a snare's body has low end too: a "kick" within ~35 ms of a snare is the snare
+    # ...unless the low end is strong enough to be a kick under a cymbal
+    snares = [f for f, kd in out if kd == 1]
+    def lowlevel(f):
+        i = min(n - 1, f // hop + 3)
+        return max(sl[i: i + 4])
+    out = [(f, kd) for f, kd in out
+           if not (kd == 0 and lowlevel(f) < 0.6 * maxL
+                   and any(abs(f - sf) < RATE * 0.035 for sf in snares))]
     out.sort()
     return out
 
