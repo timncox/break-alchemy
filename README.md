@@ -43,8 +43,13 @@ white punching. B2 blue = locked to J1 · grey free-running (white flash per bea
 
 Export from ectocore.rocks and copy the folder's contents (or the folder
 itself) to a FAT32 card: `bank1/0.0.wav` + `bank1/0.0.wav.info`, … and
-`settings/grimoire/runeN/effectE-on`. `tools/make_test_card.py <dir>` writes
-a small synthetic card in the same layout.
+`settings/grimoire/runeN/effectE-on`.
+
+Or skip ectocore.rocks: `python3 tools/make_card.py <breaks folder> <card>`
+turns any wav / aif / mp3 / flac breaks into the same layout (tempo from the
+name like `amen 136bpm.wav`, else from the length; eighth-note slices; kicks
+and snares guessed for Trig Out). Needs ffmpeg. `tools/make_test_card.py <dir>`
+writes a small synthetic card.
 
 ## Build, test, flash
 
